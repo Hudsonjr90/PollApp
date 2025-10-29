@@ -1,33 +1,30 @@
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
-import * as path from 'path';
-import handlebars from 'handlebars';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import express from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-  );
+ 
+  const app = await NestFactory.create(AppModule);
 
-  // Configura pasta de views e engine handlebars
-    const fastify = app.getHttpAdapter().getInstance();
-    await fastify.register(require('@fastify/view'), {
-  engine: { handlebars },
-  root: path.join(__dirname, 'views'),
-  includeViewExtension: true,
-});
+  const config = new DocumentBuilder()
+    .setTitle('PollApp API')
+    .setDescription('Documentação da API PollApp')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('docs', app, document);
 
-  // Servir arquivos estáticos (imagens, favicon, css)
-    await fastify.register(require('@fastify/static'), {
-    root: path.join(__dirname, '..', 'public'),
-    prefix: '/public/',
+  const expressInstance = app.getHttpAdapter().getInstance();
+  const path = require('path');
+  expressInstance.set('views', path.join(process.cwd(), 'src', 'views'));
+  expressInstance.set('view engine', 'hbs');
+  expressInstance.use('/public', express.static(path.join(process.cwd(), 'public'))); 
+
+  expressInstance.get('/', (req, res) => {
+    res.render('index', { version: '1.0' });
   });
 
-  // Rota inicial renderizando index.hbs
-    fastify.get('/', (_req, reply) => {
-  (reply as any).view('index.hbs', { version: '1.0' });
-});
-
-  await app.listen(process.env.PORT || 3000, '0.0.0.0');
+  await app.listen(process.env.PORT || 3000);
 }
 bootstrap();
