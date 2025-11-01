@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePollDto } from './dto/create.poll.dto';
 
@@ -65,8 +65,11 @@ export class PollsService {
     });
   }
 
-  async remove(id: string) {
+ async remove(id: string) {
+    const poll = await this.prisma.poll.findUnique({ where: { id } });
+    if (!poll) throw new NotFoundException('Enquete não encontrada');
+
     await this.prisma.poll.delete({ where: { id } });
-    return { id };
+    return { message: 'Enquete removida com sucesso', id };
   }
 }
